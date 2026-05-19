@@ -1,0 +1,72 @@
+#include "GolpeadoBoss.hpp"
+#include "IdleBoss2.hpp"
+#include "Motor/Componentes/IComponentes.hpp"
+#include "Juego/Componentes/IJComponentes.hpp"
+#include <Motor/Primitivos/GestorAssets.hpp>
+
+namespace IVJ
+{
+    GolpeadoBoss::GolpeadoBoss(int max_frames, float frame_rate)
+        : sprite{nullptr}, s_w{0}, s_h{0},
+          max_frames{max_frames}, id_frame{0},
+          max_frame_time{frame_rate}, cur_frame_time{frame_rate},
+          animacion_terminada{false}
+    {
+        nombre = "Boss_Golpeado";
+    }
+
+    FSM* GolpeadoBoss::onInputs(Entidad& parent, CE::Vector2D& target)
+    {
+        (void)parent;
+        (void)target;
+        if(animacion_terminada)
+            return new IdleBoss2(2, 0.7f);
+        return nullptr;
+    }
+
+    void GolpeadoBoss::onEntrar(const Entidad& obj)
+    {
+        sprite = &obj.getComponente<CE::ISprite>()->m_sprite;
+        s_w = obj.getComponente<CE::ISprite>()->width;
+        s_h = obj.getComponente<CE::ISprite>()->height;
+        id_frame = 0;
+        animacion_terminada = false;
+
+        // fila 6 (hurt)
+        sprite->setTextureRect(
+            sf::IntRect(
+                sf::Vector2i(0, 11 * s_h),
+                sf::Vector2i(s_w, s_h)
+            )
+        );
+        id_frame = 1;
+        CE::GestorAssets::Get().getSonido("golpe").play();
+
+    }
+
+    void GolpeadoBoss::onSalir(const Entidad& obj)
+    {
+        (void)obj;
+    }
+
+    void GolpeadoBoss::onUpdate(const Entidad& obj, float dt)
+    {
+        (void)obj;
+        cur_frame_time -= dt;
+        if(cur_frame_time <= 0)
+        {
+            if(id_frame >= max_frames) {
+                animacion_terminada = true;
+                return;
+            }
+            sprite->setTextureRect(
+                sf::IntRect(
+                    sf::Vector2i(s_w * (id_frame % max_frames), 11 * s_h),
+                    sf::Vector2i(s_w, s_h)
+                )
+            );
+            id_frame++;
+            cur_frame_time = max_frame_time;
+        }
+    }
+}
