@@ -2,6 +2,8 @@
 #include"Motor/Componentes/IComponentes.hpp"
 #include "AttackBoss2.hpp"
 #include "PerseguirBoss.hpp"
+#include "CubriendoBoss.hpp"
+#include "../lucha/CubiertoLucha.hpp"
 #include <cmath>
 
 namespace IVJ
@@ -31,6 +33,25 @@ namespace IVJ
                 parent.getComponente<CE::ISprite>()->m_sprite.setScale({1.f, 1.f});
             else
                 parent.getComponente<CE::ISprite>()->m_sprite.setScale({-1.f, 1.f});
+        }
+
+        // Si el jugador está derribado, ir a cubrirlo
+        auto target_comp = parent.getComponente<ITarget>();
+        if(target_comp && target_comp->target_obj) {
+            auto player_combate = target_comp->target_obj->getComponente<ICombate>();
+            if(player_combate && player_combate->esta_derribado) {
+                if(distancia_x < 40.f && distancia_y < 20.f) {
+                    auto meJ = target_comp->target_obj->getComponente<IMaquinaEstado>();
+                    auto entJ = dynamic_cast<Entidad*>(target_comp->target_obj);
+                    if(meJ && entJ) {
+                        meJ->fsm = std::make_shared<CubiertoLucha>();
+                        entJ->setFSM(meJ->fsm);
+                    }
+                    return new CubriendoBoss();
+                } else {
+                    return new PerseguirBoss(3, 0.25f, 60.f);
+                }
+            }
         }
 
         //respetar cooldown de ataque

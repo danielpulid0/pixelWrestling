@@ -1,6 +1,8 @@
 #include"PerseguirBoss.hpp"
 #include"IdleBoss2.hpp"
 #include"AttackBoss2.hpp"
+#include"CubriendoBoss.hpp"
+#include"../lucha/CubiertoLucha.hpp"
 #include"Motor/Componentes/IComponentes.hpp"
 #include<cmath>
 
@@ -22,6 +24,45 @@ namespace IVJ
         float dy = target.y - pos.y;
         float distancia_x = std::abs(dx);
         float distancia_y = std::abs(dy);
+
+        // Si el jugador está derribado, ir a cubrirlo
+        auto target_comp = parent.getComponente<ITarget>();
+        if(target_comp && target_comp->target_obj) {
+            auto player_combate = target_comp->target_obj->getComponente<ICombate>();
+            if(player_combate && player_combate->esta_derribado) {
+                //seguir al jugador en Y de forma suave (interpolación)
+                if(distancia_y > 2.f) {
+                    float dir_y = (dy > 0) ? 1.f : -1.f;
+                    parent.getTransformada()->posicion.y += dir_y * velocidad * 0.016f;
+                }
+                
+                // perseguir en X hacia el jugador
+                if (distancia_x > 2.f) {
+                    float dir_x = (dx > 0) ? 1.f : -1.f;
+                    parent.getTransformada()->posicion.x += dir_x * velocidad * 0.016f;
+                }
+
+                //voltear sprite hacia el jugador
+                if(parent.getComponente<CE::ISprite>()) {
+                    if(dx < 0)
+                        parent.getComponente<CE::ISprite>()->m_sprite.setScale({1.f, 1.f});
+                    else
+                        parent.getComponente<CE::ISprite>()->m_sprite.setScale({-1.f, 1.f});
+                }
+
+                // si está en rango, cubrirlo!
+                if(distancia_x < 40.f && distancia_y < 20.f) {
+                    auto meJ = target_comp->target_obj->getComponente<IMaquinaEstado>();
+                    auto entJ = dynamic_cast<Entidad*>(target_comp->target_obj);
+                    if(meJ && entJ) {
+                        meJ->fsm = std::make_shared<CubiertoLucha>();
+                        entJ->setFSM(meJ->fsm);
+                    }
+                    return new CubriendoBoss();
+                }
+                return nullptr;
+            }
+        }
 
         //seguir al jugador en Y de forma suave (interpolación)
         if(distancia_y > 2.f) {

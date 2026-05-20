@@ -14,7 +14,15 @@
 #include <Motor/Primitivos/GestorAssets.hpp>
 #include <Juego/Maquinas/lucha/IdleLucha.hpp>
 #include <Juego/Maquinas/lucha/AtaqueSilla.hpp>
+#include <Juego/Maquinas/lucha/CubriendoLucha.hpp>
+#include <Juego/Maquinas/lucha/CubiertoLucha.hpp>
+#include <Juego/Maquinas/lucha/LevantarseLucha.hpp>
+#include <Juego/Maquinas/lucha/RebotePinLucha.hpp>
 #include <Juego/Maquinas/Bosses/IdleBoss2.hpp>
+#include <Juego/Maquinas/Bosses/CubriendoBoss.hpp>
+#include <Juego/Maquinas/Bosses/CubiertoBoss.hpp>
+#include <Juego/Maquinas/Bosses/LevantarseBoss.hpp>
+#include <Juego/Maquinas/Bosses/RebotePinBoss.hpp>
 
 namespace IVJ
 {
@@ -241,11 +249,14 @@ namespace IVJ
         if(tap_timer_izq > 0) tap_timer_izq -= dt;
         else tap_count_izq = 0;
 
+        bool en_conteo_activo = (conteo_boss.en_conteo || conteo_jugador.en_conteo);
         for(auto& obj: objetos.getPool())
         {
             obj->inputFSM();
             obj->onUpdate(dt);
-            SistemaColAABBMid(*jugador_ref, *obj, true);
+            if(!en_conteo_activo) {
+                SistemaColAABBMid(*jugador_ref, *obj, true);
+            }
         }
 
         //=== SISTEMAS DE COMBATE ===
@@ -268,6 +279,23 @@ namespace IVJ
             auto combateBoss = boss_ref->getComponente<ICombate>();
             auto combateJug = jugador_ref->getComponente<ICombate>();
 
+            // === INICIO AUTOMÁTICO DE CONTEO ===
+            auto meJ = jugador_ref->getComponente<IMaquinaEstado>();
+            auto meB = boss_ref->getComponente<IMaquinaEstado>();
+            if(meJ && meJ->fsm && meB && meB->fsm) {
+                if(meJ->fsm->getNombre() == "CubriendoLucha" && !conteo_boss.en_conteo && meB->fsm->getNombre() == "CubiertoBoss") {
+                    conteo_boss.en_conteo = true;
+                    conteo_boss.cuenta = 0;
+                    conteo_boss.timer_cuenta = 0.f;
+                }
+                if(meB->fsm->getNombre() == "CubriendoBoss" && !conteo_jugador.en_conteo && meJ->fsm->getNombre() == "CubiertoLucha") {
+                    conteo_jugador.en_conteo = true;
+                    conteo_jugador.cuenta = 0;
+                    conteo_jugador.timer_cuenta = 0.f;
+                    conteo_jugador.barra_escape = 0.f;
+                }
+            }
+
             //desactivar conteo si el derribado se levantó
             if(conteo_boss.en_conteo && combateBoss && !combateBoss->esta_derribado) {
                 conteo_boss.en_conteo = false;
@@ -278,7 +306,49 @@ namespace IVJ
                 conteo_jugador.cuenta = 0;
             }
 
+            // Gestionar salida de los estados de Pinfall cuando ya no hay conteo
+            if(!conteo_boss.en_conteo) {
+                if(meJ && meJ->fsm && meJ->fsm->getNombre() == "CubriendoLucha") {
+                    float s_x = jugador_ref->getTransformada()->posicion.x;
+                    float s_y = jugador_ref->getTransformada()->posicion.y;
+                    float dir_x = 1.f;
+                    if(jugador_ref->getComponente<CE::ISprite>()) {
+                        dir_x = (jugador_ref->getComponente<CE::ISprite>()->m_sprite.getScale().x > 0) ? -1.f : 1.f;
+                    }
+                    meJ->fsm = std::make_shared<RebotePinLucha>(s_x, s_y, dir_x);
+                    jugador_ref->setFSM(meJ->fsm);
+                }
+                if(meB && meB->fsm && meB->fsm->getNombre() == "CubiertoBoss") {
+                    meB->fsm = std::make_shared<LevantarseBoss>(6, 0.15f);
+                    boss_ref->setFSM(meB->fsm);
+                }
+            }
+            if(!conteo_jugador.en_conteo) {
+                if(meB && meB->fsm && meB->fsm->getNombre() == "CubriendoBoss") {
+                    float s_x = boss_ref->getTransformada()->posicion.x;
+                    float s_y = boss_ref->getTransformada()->posicion.y;
+                    float dir_x = 1.f;
+                    if(boss_ref->getComponente<CE::ISprite>()) {
+                        dir_x = (boss_ref->getComponente<CE::ISprite>()->m_sprite.getScale().x > 0) ? 1.f : -1.f;
+                    }
+                    meB->fsm = std::make_shared<RebotePinBoss>(s_x, s_y, dir_x);
+                    boss_ref->setFSM(meB->fsm);
+                }
+                if(meJ && meJ->fsm && meJ->fsm->getNombre() == "CubiertoLucha") {
+                    meJ->fsm = std::make_shared<LevantarseLucha>(7, 0.15f);
+                    jugador_ref->setFSM(meJ->fsm);
+                }
+            }
+
             if(conteo_boss.en_conteo) {
+                // Alinear posición
+                jugador_ref->setPosicion(boss_ref->getTransformada()->posicion.x, boss_ref->getTransformada()->posicion.y);
+                // Alinear escala/orientación
+                if(jugador_ref->getComponente<CE::ISprite>() && boss_ref->getComponente<CE::ISprite>()) {
+                    jugador_ref->getComponente<CE::ISprite>()->m_sprite.setScale(
+                        boss_ref->getComponente<CE::ISprite>()->m_sprite.getScale()
+                    );
+                }
                 if(SistemaConteoPC(*entB, dt, conteo_boss)) {
                     match_terminado = true;
                     jugador_gano = true;
@@ -286,6 +356,14 @@ namespace IVJ
             }
 
             if(conteo_jugador.en_conteo) {
+                // Alinear posición
+                boss_ref->setPosicion(jugador_ref->getTransformada()->posicion.x, jugador_ref->getTransformada()->posicion.y);
+                // Alinear escala/orientación
+                if(boss_ref->getComponente<CE::ISprite>() && jugador_ref->getComponente<CE::ISprite>()) {
+                    boss_ref->getComponente<CE::ISprite>()->m_sprite.setScale(
+                        jugador_ref->getComponente<CE::ISprite>()->m_sprite.getScale()
+                    );
+                }
                 if(SistemaConteoJugador(*entJ, dt, conteo_jugador)) {
                     match_terminado = true;
                     jugador_gano = false;
@@ -338,6 +416,41 @@ namespace IVJ
                     if(me) {
                         me->fsm = std::make_shared<AtaqueSilla>(3, 0.08f);
                         jugador_ref->setFSM(me->fsm);
+                    }
+                }
+            }
+        }
+
+        //=== PROXIMIDAD BOSS + CUBRIR ===
+        mostrar_cubrir = false;
+        if (boss_ref && boss_ref->estaVivo()) {
+            auto combateBoss = boss_ref->getComponente<ICombate>();
+            if (combateBoss && combateBoss->esta_derribado && !conteo_boss.en_conteo && !conteo_jugador.en_conteo) {
+                auto& posJ = jugador_ref->getTransformada()->posicion;
+                auto& posB = boss_ref->getTransformada()->posicion;
+                float dist = std::sqrt((posJ.x-posB.x)*(posJ.x-posB.x) + (posJ.y-posB.y)*(posJ.y-posB.y));
+                if (dist < 50.f) {
+                    mostrar_cubrir = true;
+                    auto control = jugador_ref->getComponente<CE::IControl>();
+                    if (control && control->pickup) {
+                        control->pickup = false;
+                        
+                        // Iniciar cover
+                        conteo_boss.en_conteo = true;
+                        conteo_boss.cuenta = 0;
+                        conteo_boss.timer_cuenta = 0.f;
+
+                        // Cambiar a estados de cubrir
+                        auto meJ = jugador_ref->getComponente<IMaquinaEstado>();
+                        if(meJ) {
+                            meJ->fsm = std::make_shared<CubriendoLucha>();
+                            jugador_ref->setFSM(meJ->fsm);
+                        }
+                        auto meB = boss_ref->getComponente<IMaquinaEstado>();
+                        if(meB) {
+                            meB->fsm = std::make_shared<CubiertoBoss>();
+                            boss_ref->setFSM(meB->fsm);
+                        }
                     }
                 }
             }
@@ -450,6 +563,17 @@ namespace IVJ
             sf::Font& font = CE::GestorAssets::Get().getFont("nova");
             sf::Text txt(font, "Usar silla (V)", 14);
             txt.setPosition({vw/2.f - 50.f, vh - 30.f});
+            txt.setFillColor(sf::Color::Yellow);
+            txt.setOutlineColor(sf::Color::Black);
+            txt.setOutlineThickness(1.f);
+            CE::Render::Get().AddToDraw(txt);
+        }
+
+        //prompt de cubrir
+        if(mostrar_cubrir) {
+            sf::Font& font = CE::GestorAssets::Get().getFont("nova");
+            sf::Text txt(font, "Cubrir (V)", 14);
+            txt.setPosition({vw/2.f - 40.f, vh - 50.f});
             txt.setFillColor(sf::Color::Yellow);
             txt.setOutlineColor(sf::Color::Black);
             txt.setOutlineThickness(1.f);

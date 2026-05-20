@@ -33,6 +33,7 @@ namespace IVJ {
             static constexpr float ITEM_INTERVAL = 30.f;
             std::shared_ptr<Entidad> silla_ref{nullptr};
             bool mostrar_usar_silla{false};
+            bool mostrar_cubrir{false};
 
             //doble-tap para correr
             float tap_timer_der{0.f};

@@ -200,6 +200,7 @@ namespace IVJ
             };
         public:
             CE::Vector2D* pos;
+            CE::Objeto* target_obj{nullptr};
     };
     
     class IRangoAggro : public CE::IComponentes
