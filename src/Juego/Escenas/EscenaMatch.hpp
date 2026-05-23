@@ -56,5 +56,16 @@ namespace IVJ {
             //shader de parpadeo al bloquear golpe
             float flash_intensity_jug{0.f};
             float flash_intensity_boss{0.f};
+
+            // Menú de Pausa
+            bool en_pausa{false};
+            int opcion_pausa{0};
+            bool mostrando_controles{false};
+            std::shared_ptr<class Rectangulo> fondo_pausa;
+            std::shared_ptr<class Texto> txt_pausa_titulo;
+            std::shared_ptr<class Texto> txt_pausa_opc1;
+            std::shared_ptr<class Texto> txt_pausa_opc2;
+            std::shared_ptr<class Texto> txt_pausa_opc3;
+            std::shared_ptr<class Texto> txt_pausa_controles;
     };
 }

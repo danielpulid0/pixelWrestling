@@ -19,5 +19,6 @@ namespace IVJ
             float act_tiempo;   //frame rate actual
             int max_frames;     //frames de animación
             int id_frame;       //frame actual de animación
+            const Entidad* m_ente{nullptr};
     };
 }

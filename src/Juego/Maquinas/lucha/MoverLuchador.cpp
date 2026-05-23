@@ -1,6 +1,7 @@
 #include"MoverLuchador.hpp"
 #include"IdleLucha.hpp"
 #include"CorrerLuchador.hpp"
+#include"AtaqueSilla.hpp"
 namespace IVJ
 {
     MoverLuchador::MoverLuchador(int max_frames,float frame_rate)
@@ -21,10 +22,21 @@ namespace IVJ
         if(control.run)
             return new CorrerLuchador(4, 0.08f);
 
+        // ataque con silla
+        if(control.punch || control.kick) {
+            if(m_ente) {
+                auto combate = m_ente->getComponente<ICombate>();
+                if(combate && combate->tiene_silla) {
+                    return new AtaqueSilla(3, 0.12f);
+                }
+            }
+        }
+
         return nullptr;
     }
     void MoverLuchador::onEntrar(const Entidad& obj)
     {
+        m_ente = &obj;
         sprite = &obj.getComponente<CE::ISprite>()->m_sprite;
         s_w = obj.getComponente<CE::ISprite>()->width;
         s_h = obj.getComponente<CE::ISprite>()->height;

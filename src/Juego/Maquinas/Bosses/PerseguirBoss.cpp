@@ -2,9 +2,14 @@
 #include"IdleBoss2.hpp"
 #include"AttackBoss2.hpp"
 #include"CubriendoBoss.hpp"
+#include"PatadaBoss.hpp"
+#include"RemateBoss.hpp"
+#include"AtaqueSillaBoss.hpp"
+#include"DefensaBoss.hpp"
 #include"../lucha/CubiertoLucha.hpp"
 #include"Motor/Componentes/IComponentes.hpp"
 #include<cmath>
+#include<cstdlib>
 
 namespace IVJ
 {
@@ -76,8 +81,32 @@ namespace IVJ
         bool en_cooldown = (combate && combate->cooldown_ataque > 0);
         if(en_cooldown) combate->cooldown_ataque -= 0.016f;
 
-        if(distancia_x < 40.f && distancia_y < 20.f && !en_cooldown)
-            return new AttackBoss2(2, 0.18f);
+        if(distancia_x < 40.f && distancia_y < 20.f && !en_cooldown) {
+            // Remate
+            auto momentum = parent.getComponente<IMomentum>();
+            if(momentum && momentum->remate_disponible) {
+                return new RemateBoss(3, 0.12f);
+            }
+            
+            // Ataque Silla
+            if(combate && combate->tiene_silla) {
+                return new AtaqueSillaBoss(3, 0.12f);
+            }
+
+            // Patada vs Golpe (50/50)
+            if(rand() % 2 == 0) {
+                return new PatadaBoss(2, 0.14f);
+            } else {
+                return new AttackBoss2(2, 0.14f);
+            }
+        }
+
+        // Defensa aleatoria esporádica si está cerca
+        if(distancia_x < 80.f && distancia_y < 40.f) {
+            if(rand() % 100 < 1) { // 1% chance per frame
+                return new DefensaBoss(0.5f + (rand()%10)/10.0f);
+            }
+        }
 
         //si sale del rango de persecución en X Y ya está alineado en Y, volver a idle
         if(distancia_x > 200.f && distancia_y <= 2.f)

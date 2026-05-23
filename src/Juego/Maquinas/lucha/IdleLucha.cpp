@@ -5,6 +5,8 @@
 #include"PatadaLigera.hpp"
 #include"DefensaLucha.hpp"
 #include"RemateLucha.hpp"
+#include"AtaqueSilla.hpp"
+#include <Motor/Primitivos/GestorAssets.hpp>
 
 namespace IVJ
 {
@@ -25,6 +27,16 @@ namespace IVJ
             if(control.run)
                 return new CorrerLuchador(4, 0.08f);
             return new MoverLuchador(3, 0.1f);
+        }
+
+        // ataque con silla
+        if(control.punch || control.kick) {
+            if(m_ente) {
+                auto combate = m_ente->getComponente<ICombate>();
+                if(combate && combate->tiene_silla) {
+                    return new AtaqueSilla(3, 0.12f);
+                }
+            }
         }
 
         //golpe ligero (Z)
@@ -51,8 +63,10 @@ namespace IVJ
         if(control.finisher) {
             if(m_ente) {
                 auto momentum = m_ente->getComponente<IMomentum>();
-                if(momentum && momentum->remate_disponible)
+                if(momentum && momentum->remate_disponible){
+                    CE::GestorAssets::Get().getSonido("sweet").play();
                     return new RemateLucha(3, 0.05f);
+                }
             }
         }
 

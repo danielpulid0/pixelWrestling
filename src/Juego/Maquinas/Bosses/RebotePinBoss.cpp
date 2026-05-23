@@ -60,6 +60,30 @@ namespace IVJ
         float nx = start_x + (dir_x * 60.f * t); // se mueve 60 pixeles hacia la direccion
         float ny = start_y - (altura * std::sin(M_PI * t)); // parabola
         
+        // Limitar dentro de los límites del ring (incluyendo hitbox del jefe)
+        float half_w = 17.5f;
+        float half_h = 44.f;
+        auto bbox = m_ente->getComponente<CE::IBoundingBox>();
+        if (bbox) {
+            half_w = bbox->mitad.x;
+            half_h = bbox->mitad.y;
+        }
+
+        // Límites calculados a partir de las paredes del ring:
+        // Pared Izq (x=90, w=20) -> Borde = 100
+        // Pared Der (x=590, w=20) -> Borde = 580
+        // Pared Sup (y=126, h=10) -> Borde = 131
+        // Pared Inf (y=296, h=10) -> Borde = 291
+        float min_x = 100.f + half_w;
+        float max_x = 580.f - half_w;
+        float min_y = 131.f + half_h;
+        float max_y = 291.f - half_h;
+
+        if (nx < min_x) nx = min_x;
+        if (nx > max_x) nx = max_x;
+        if (ny < min_y) ny = min_y;
+        if (ny > max_y) ny = max_y;
+        
         m_ente->setPosicion(nx, ny);
     }
 }

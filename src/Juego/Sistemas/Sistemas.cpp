@@ -706,7 +706,18 @@ namespace IVJ
                 return false;
             }
             conteo.cuenta++;
-            if(conteo.cuenta >= 3) return true; //victoria
+                    // LOGICA DE REPRODUCCIÓN
+            if (conteo.cuenta == 1) {
+                CE::GestorAssets::Get().getSonido("conteo1").play();
+            } else if (conteo.cuenta == 2) {
+                CE::GestorAssets::Get().getSonido("conteo2").play();
+            } else if (conteo.cuenta == 3) {
+                CE::GestorAssets::Get().getSonido("conteo3").play();
+            }
+            if(conteo.cuenta >= 3) {
+                CE::GestorAssets::Get().getSonido("campana").play();
+                return true; //victoria
+            }
         }
         return false;
     }
@@ -745,6 +756,16 @@ namespace IVJ
         if(conteo.timer_cuenta >= conteo.intervalo) {
             conteo.timer_cuenta = 0;
             conteo.cuenta++;
+            
+            // LOGICA DE REPRODUCCIÓN
+            if (conteo.cuenta == 1) {
+                CE::GestorAssets::Get().getSonido("conteo1").play();
+            } else if (conteo.cuenta == 2) {
+                CE::GestorAssets::Get().getSonido("conteo2").play();
+            } else if (conteo.cuenta == 3) {
+                CE::GestorAssets::Get().getSonido("conteo3").play();
+            }
+
             conteo.barra_escape = 0; //reset barra por cuenta
             if(conteo.cuenta >= 3) return true; //derrota
         }

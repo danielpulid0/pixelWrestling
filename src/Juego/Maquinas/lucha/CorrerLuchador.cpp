@@ -1,6 +1,7 @@
 #include"CorrerLuchador.hpp"
 #include"IdleLucha.hpp"
 #include"MoverLuchador.hpp"
+#include"AtaqueSilla.hpp"
 #include"Motor/Componentes/IComponentes.hpp"
 
 namespace IVJ
@@ -24,6 +25,16 @@ namespace IVJ
         //si ya no están corriendo, volver a caminar
         if(!control.run)
             return new MoverLuchador(3, 0.1f);
+
+        // ataque con silla
+        if(control.punch || control.kick) {
+            if(m_ente) {
+                auto combate = m_ente->getComponente<ICombate>();
+                if(combate && combate->tiene_silla) {
+                    return new AtaqueSilla(3, 0.12f);
+                }
+            }
+        }
 
         return nullptr;
     }

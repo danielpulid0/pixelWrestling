@@ -23,6 +23,8 @@
 #include <Juego/Maquinas/Bosses/CubiertoBoss.hpp>
 #include <Juego/Maquinas/Bosses/LevantarseBoss.hpp>
 #include <Juego/Maquinas/Bosses/RebotePinBoss.hpp>
+#include <Juego/objetos/Texto.hpp>
+#include <Motor/Primitivos/GestorEscenas.hpp>
 
 namespace IVJ
 {
@@ -36,6 +38,11 @@ namespace IVJ
         CE::GestorAssets::Get().agregarSonido("sillazo", ASSETS "/sonidos/sillazo.ogg");
         CE::GestorAssets::Get().agregarSonido("campana", ASSETS "/sonidos/bell.ogg");
         CE::GestorAssets::Get().agregarSonido("bloqueo", ASSETS "/sonidos/bloqueado.ogg");
+        CE::GestorAssets::Get().agregarSonido("conteo1", ASSETS "/sonidos/one.ogg");
+        CE::GestorAssets::Get().agregarSonido("conteo2", ASSETS "/sonidos/two.ogg");
+        CE::GestorAssets::Get().agregarSonido("conteo3", ASSETS "/sonidos/three.ogg");
+        CE::GestorAssets::Get().agregarSonido("sweet", ASSETS "/sonidos/Sweet.ogg");
+
 
         //=== REGISTRAR BOTONES ===
         registrarBotones(sf::Keyboard::Scancode::Left,"izquierda");
@@ -210,6 +217,34 @@ namespace IVJ
         objetos.agregarPool(silla_test);
         silla_ref = silla_test;
         item_timer = 0;
+        // === MENÚ DE PAUSA ===
+        registrarBotones(sf::Keyboard::Scancode::P,"pausa");
+        
+        fondo_pausa = std::make_shared<Rectangulo>(1080.f, 720.f, sf::Color(0, 0, 0, 180), sf::Color::Transparent);
+        fondo_pausa->setPosicion(540.f, 360.f);
+
+        txt_pausa_titulo = std::make_shared<Texto>(CE::GestorAssets::Get().getFont("default_font"), "PAUSA");
+        txt_pausa_titulo->setFontSize(60u);
+        txt_pausa_titulo->setColor(sf::Color::White);
+        txt_pausa_titulo->setPosicion(460.f, 200.f);
+
+        txt_pausa_opc1 = std::make_shared<Texto>(CE::GestorAssets::Get().getFont("default_font"), "Reanudar");
+        txt_pausa_opc1->setFontSize(40u);
+        txt_pausa_opc1->setPosicion(450.f, 350.f);
+
+        txt_pausa_opc2 = std::make_shared<Texto>(CE::GestorAssets::Get().getFont("default_font"), "Volver al Menu");
+        txt_pausa_opc2->setFontSize(40u);
+        txt_pausa_opc2->setPosicion(450.f, 420.f);
+
+        txt_pausa_opc3 = std::make_shared<Texto>(CE::GestorAssets::Get().getFont("default_font"), "Ver Controles");
+        txt_pausa_opc3->setFontSize(40u);
+        txt_pausa_opc3->setPosicion(450.f, 490.f);
+
+        txt_pausa_controles = std::make_shared<Texto>(CE::GestorAssets::Get().getFont("default_font"), 
+            "CONTROLES\n\nZ: Golpe Ligero\nX: Patada Ligera\nC: Bloquear\nV: Recoger Objeto\nF: Remate (Con Momentum lleno)\nFlechas: Moverse\nDoble Tap Flechas: Correr\nP: Pausa\n\nPresiona Enter para volver");
+        txt_pausa_controles->setFontSize(30u);
+        txt_pausa_controles->setColor(sf::Color::White);
+        txt_pausa_controles->setPosicion(350.f, 250.f);
 
         inicializar=false;
     }
@@ -238,6 +273,9 @@ namespace IVJ
         }
 
         if(match_terminado) return;
+        
+        // Pausar toda la lógica si estamos en pausa
+        if(en_pausa) return;
 
         jugador_ref->inputFSM();
         jugador_ref->onUpdate(dt);
@@ -399,23 +437,45 @@ namespace IVJ
         //=== PROXIMIDAD SILLA + PICKUP ===
         mostrar_usar_silla = false;
         if(silla_ref && silla_ref->estaVivo()) {
-            auto& posJ = jugador_ref->getTransformada()->posicion;
-            auto& posS = silla_ref->getTransformada()->posicion;
-            float dist = std::sqrt((posJ.x-posS.x)*(posJ.x-posS.x) + (posJ.y-posS.y)*(posJ.y-posS.y));
-            if(dist < 40.f) {
-                mostrar_usar_silla = true;
-                auto control = jugador_ref->getComponente<CE::IControl>();
-                if(control && control->pickup) {
-                    control->pickup = false;
-                    // remover SOLO la silla del pool de objetos
+            auto item = silla_ref->getComponente<IItem>();
+            auto combateJ = jugador_ref->getComponente<ICombate>();
+            auto combateB = (boss_ref && boss_ref->estaVivo()) ? boss_ref->getComponente<ICombate>() : nullptr;
+            
+            if(item && item->recogido) {
+                if(combateJ && combateJ->tiene_silla) {
+                    auto pos = jugador_ref->getTransformada()->posicion;
+                    silla_ref->setPosicion(pos.x, pos.y + 17.f);
+                } else if(combateB && combateB->tiene_silla) {
+                    auto pos = boss_ref->getTransformada()->posicion;
+                    silla_ref->setPosicion(pos.x, pos.y + 17.f);
+                } else {
+                    // Ninguno tiene la silla ya, la destruimos
                     auto& pool = objetos.getPool();
                     pool.erase(std::remove(pool.begin(), pool.end(), silla_ref), pool.end());
                     silla_ref = nullptr;
-                    // transicionar a AtaqueSilla
-                    auto me = jugador_ref->getComponente<IMaquinaEstado>();
-                    if(me) {
-                        me->fsm = std::make_shared<AtaqueSilla>(3, 0.08f);
-                        jugador_ref->setFSM(me->fsm);
+                }
+            } else {
+                auto& posS = silla_ref->getTransformada()->posicion;
+                // Pickup Jugador
+                auto& posJ = jugador_ref->getTransformada()->posicion;
+                float distJ = std::sqrt((posJ.x-posS.x)*(posJ.x-posS.x) + (posJ.y-posS.y)*(posJ.y-posS.y));
+                if(distJ < 40.f) {
+                    mostrar_usar_silla = true;
+                    auto control = jugador_ref->getComponente<CE::IControl>();
+                    if(control && control->pickup) {
+                        control->pickup = false;
+                        item->recogido = true;
+                        if(combateJ) combateJ->tiene_silla = true;
+                    }
+                }
+                
+                // Pickup Boss (automático si está cerca)
+                if(!item->recogido && boss_ref && boss_ref->estaVivo()) {
+                    auto& posB = boss_ref->getTransformada()->posicion;
+                    float distB = std::sqrt((posB.x-posS.x)*(posB.x-posS.x) + (posB.y-posS.y)*(posB.y-posS.y));
+                    if(distB < 40.f) {
+                        item->recogido = true;
+                        if(combateB) combateB->tiene_silla = true;
                     }
                 }
             }
@@ -458,6 +518,49 @@ namespace IVJ
     }
 
     void EscenaMatch::onInputs(const CE::Botones& accion){
+        if(accion.getTipo() == CE::Botones::TipoAccion::OnPress)
+        {
+            if(accion.getNombre() == "pausa")
+            {
+                en_pausa = !en_pausa;
+                mostrando_controles = false;
+                opcion_pausa = 0;
+            }
+
+            if(en_pausa)
+            {
+                if(!mostrando_controles)
+                {
+                    if(accion.getNombre() == "arriba") {
+                        if(opcion_pausa == 0) opcion_pausa = 2;
+                        else opcion_pausa--;
+                    }
+                    else if(accion.getNombre() == "abajo") {
+                        opcion_pausa = (opcion_pausa + 1) % 3;
+                    }
+                    else if(accion.getNombre() == "aceptar") {
+                        if(opcion_pausa == 0) {
+                            en_pausa = false; // Reanudar
+                        }
+                        else if(opcion_pausa == 1) {
+                            CE::GestorEscenas::Get().cambiarEscena("Menu"); // Volver al Menú
+                        }
+                        else if(opcion_pausa == 2) {
+                            mostrando_controles = true; // Ver Controles
+                        }
+                    }
+                }
+                else
+                {
+                    // Si estamos viendo los controles, cualquier tecla de aceptar o pausa vuelve
+                    if(accion.getNombre() == "aceptar" || accion.getNombre() == "escape" || accion.getNombre() == "pausa") {
+                        mostrando_controles = false;
+                    }
+                }
+                return; // Si estamos en pausa, ignorar el resto de inputs del juego
+            }
+        }
+
         auto control = jugador_ref->getComponente<CE::IControl>();
         if(!control) return;
 
@@ -581,9 +684,9 @@ namespace IVJ
         }
 
         //conteo pinfall
-        if(conteo_boss.en_conteo)
+        if(conteo_boss.en_conteo && conteo_boss.cuenta !=0)
             dibujarConteo(conteo_boss.cuenta, vw/2.f - 30.f, vh/2.f - 80.f);
-        if(conteo_jugador.en_conteo) {
+        if(conteo_jugador.en_conteo && conteo_jugador.cuenta !=0) {
             dibujarConteo(conteo_jugador.cuenta, vw/2.f - 30.f, vh/2.f - 80.f);
             dibujarBarraEscape(conteo_jugador.barra_escape, vw/2.f - 100.f, vh/2.f + 20.f);
         }
@@ -596,6 +699,28 @@ namespace IVJ
             texto.setPosition({vw/2.f - 120.f, vh/2.f - 40.f});
             texto.setFillColor(jugador_gano ? sf::Color::Yellow : sf::Color::Red);
             CE::Render::Get().AddToDraw(texto);
+        }
+
+        // --- MENÚ DE PAUSA ---
+        if(en_pausa) {
+            CE::Render::Get().AddToDraw(*fondo_pausa);
+            CE::Render::Get().AddToDraw(*txt_pausa_titulo);
+            
+            if(!mostrando_controles) {
+                sf::Color color_sel = sf::Color::Yellow;
+                sf::Color color_unsel = sf::Color(170, 175, 190);
+                
+                txt_pausa_opc1->setColor(opcion_pausa == 0 ? color_sel : color_unsel);
+                txt_pausa_opc2->setColor(opcion_pausa == 1 ? color_sel : color_unsel);
+                txt_pausa_opc3->setColor(opcion_pausa == 2 ? color_sel : color_unsel);
+
+                CE::Render::Get().AddToDraw(*txt_pausa_opc1);
+                CE::Render::Get().AddToDraw(*txt_pausa_opc2);
+                CE::Render::Get().AddToDraw(*txt_pausa_opc3);
+            }
+            else {
+                CE::Render::Get().AddToDraw(*txt_pausa_controles);
+            }
         }
 
         //restaurar vista del juego

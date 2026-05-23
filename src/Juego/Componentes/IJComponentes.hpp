@@ -262,6 +262,7 @@ namespace IVJ
             int danio_base_patada{5};
             int danio_base_item{10};
             int danio_base_remate{25};
+            bool tiene_silla{false};
     };
 
     class IDefensa : public CE::IComponentes

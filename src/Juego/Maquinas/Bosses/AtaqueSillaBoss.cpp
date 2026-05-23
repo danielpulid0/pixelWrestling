@@ -1,32 +1,33 @@
-#include"AtaqueSilla.hpp"
-#include"IdleLucha.hpp"
+#include"AtaqueSillaBoss.hpp"
+#include"IdleBoss2.hpp"
 #include"Motor/Componentes/IComponentes.hpp"
 #include"Motor/Primitivos/GestorAssets.hpp"
 
 namespace IVJ
 {
-    AtaqueSilla::AtaqueSilla(int max_frames, float frame_rate)
-        :FSM{}, sprite{nullptr}, s_w{0}, s_h{0},
+    AtaqueSillaBoss::AtaqueSillaBoss(int max_frames, float frame_rate)
+        :FSMBoss{}, sprite{nullptr}, s_w{0}, s_h{0},
         max_frames{max_frames}, id_frame{0},
         max_frame_time{frame_rate}, cur_frame_time{frame_rate}
     {
-        nombre = "AtaqueSilla";
+        nombre = "AtaqueSillaBoss";
     }
 
-    FSM* AtaqueSilla::onInputs(const CE::IControl& control)
+    FSM* AtaqueSillaBoss::onInputs(Entidad& parent, CE::Vector2D& target)
     {
-        (void)control;
+        (void)parent;
+        (void)target;
         if(animacion_terminada)
-            return new IdleLucha(2, 0.12f);
+            return new IdleBoss2(2, 0.2f);
         return nullptr;
     }
 
-    void AtaqueSilla::onEntrar(const Entidad& obj)
+    void AtaqueSillaBoss::onEntrar(const Entidad& obj)
     {
         auto iSprite = obj.getComponente<CE::ISprite>();
 
-        //cambiar a la spritesheet del sillazo (80x128 por frame)
-        iSprite->m_sprite.setTexture(CE::GestorAssets::Get().getTextura("shawnSillazo"));
+        //cambiar a la spritesheet del sillazo del boss (80x128)
+        iSprite->m_sprite.setTexture(CE::GestorAssets::Get().getTextura("enemySillazo"));
         iSprite->width = 80;
         iSprite->height = 128;
 
@@ -40,10 +41,10 @@ namespace IVJ
         if(combate) {
             combate->esta_atacando = false;
             combate->tipo_ataque = 3; //item
-            combate->tiene_silla = false; // "consumir" la silla
+            combate->tiene_silla = false; // consume la silla
+            combate->cooldown_ataque = 1.5f; // cooldown largo después de sillazo
         }
 
-        //mostrar primer frame inmediatamente
         sprite->setTextureRect(
             sf::IntRect(
                 sf::Vector2i(0, 0),
@@ -57,7 +58,7 @@ namespace IVJ
         id_frame = 1;
     }
 
-    void AtaqueSilla::onSalir(const Entidad& obj)
+    void AtaqueSillaBoss::onSalir(const Entidad& obj)
     {
         auto combate = obj.getComponente<ICombate>();
         if(combate) {
@@ -67,17 +68,16 @@ namespace IVJ
 
         //restaurar la spritesheet original (80x88 por frame)
         auto iSprite = obj.getComponente<CE::ISprite>();
-        iSprite->m_sprite.setTexture(CE::GestorAssets::Get().getTextura("shawn"));
+        iSprite->m_sprite.setTexture(CE::GestorAssets::Get().getTextura("enemy"));
         iSprite->width = 80;
         iSprite->height = 88;
         
-        // Restaurar explícitamente el rect para evitar "frame cortado" antes de que Idle actualice
         iSprite->m_sprite.setTextureRect(sf::IntRect({0, 0}, {80, 88}));
     }
 
-    void AtaqueSilla::onUpdate(const Entidad& obj, float dt)
+    void AtaqueSillaBoss::onUpdate(const Entidad& obj, float dt)
     {
-        // Re-aplicar el offset cada frame porque el motor resetea la posición del sprite en su onUpdate
+        // Re-aplicar el offset cada frame
         auto iSprite = obj.getComponente<CE::ISprite>();
         if (iSprite) {
             iSprite->m_sprite.move({0.f, -45.f});
@@ -97,11 +97,12 @@ namespace IVJ
                 )
             );
             
+            // Si es el último frame, activar el ataque
             if(id_frame == max_frames - 1) {
                 auto combate = obj.getComponente<ICombate>();
                 if(combate) combate->esta_atacando = true;
             }
-            
+
             id_frame++;
             cur_frame_time = max_frame_time;
         }
