@@ -34,11 +34,15 @@ namespace IVJ
             )
         );
         id_frame = 1;
+
+        auto control = obj.getComponente<CE::IControl>();
+        if(control) control->setActivo(false);
     }
 
     void CubiertoLucha::onSalir(const Entidad& obj)
     {
-        (void)obj;
+        auto control = obj.getComponente<CE::IControl>();
+        if(control) control->setActivo(true);
     }
 
     void CubiertoLucha::onUpdate(const Entidad& obj, float dt)

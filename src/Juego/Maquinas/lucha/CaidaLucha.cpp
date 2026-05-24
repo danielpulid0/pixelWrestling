@@ -40,6 +40,9 @@ namespace IVJ
             combate->esta_derribado = true;
         }
 
+        auto control = obj.getComponente<CE::IControl>();
+        if(control) control->setActivo(false);
+
         // fila 7 (caida) - row index 6
         sprite->setTextureRect(
             sf::IntRect(
@@ -52,6 +55,7 @@ namespace IVJ
         // reproducir sonido según la causa
         if(combate && combate->causa_caida == 3) {
             CE::GestorAssets::Get().getSonido("sillazo").play();
+            CE::GestorAssets::Get().getSonido("awesomechant").play();
         } else {
             CE::GestorAssets::Get().getSonido("golpe").play();
         }

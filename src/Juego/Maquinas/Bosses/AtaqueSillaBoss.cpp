@@ -2,6 +2,7 @@
 #include"IdleBoss2.hpp"
 #include"Motor/Componentes/IComponentes.hpp"
 #include"Motor/Primitivos/GestorAssets.hpp"
+#include <Juego/Escenas/EscenaMatch.hpp>
 
 namespace IVJ
 {
@@ -27,7 +28,8 @@ namespace IVJ
         auto iSprite = obj.getComponente<CE::ISprite>();
 
         //cambiar a la spritesheet del sillazo del boss (80x128)
-        iSprite->m_sprite.setTexture(CE::GestorAssets::Get().getTextura("enemySillazo"));
+        std::string tex = (EscenaMatch::personaje_rival == 0) ? "shawnSillazo" : "enemySillazo";
+        iSprite->m_sprite.setTexture(CE::GestorAssets::Get().getTextura(tex));
         iSprite->width = 80;
         iSprite->height = 128;
 
@@ -68,7 +70,8 @@ namespace IVJ
 
         //restaurar la spritesheet original (80x88 por frame)
         auto iSprite = obj.getComponente<CE::ISprite>();
-        iSprite->m_sprite.setTexture(CE::GestorAssets::Get().getTextura("enemy"));
+        std::string tex = (EscenaMatch::personaje_rival == 0) ? "shawn" : "enemy";
+        iSprite->m_sprite.setTexture(CE::GestorAssets::Get().getTextura(tex));
         iSprite->width = 80;
         iSprite->height = 88;
         

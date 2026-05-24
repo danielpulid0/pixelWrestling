@@ -23,7 +23,7 @@ namespace IVJ
         (void)parent;
         (void)target;
         if(timer >= max_time) {
-            return new LevantarseBoss(6, 0.15f);
+            return new LevantarseBoss(7, 0.15f);
         }
         return nullptr;
     }

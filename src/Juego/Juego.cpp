@@ -16,6 +16,8 @@
 #include <Juego/Escenas/Escena_MarioCam.hpp>
 #include <Juego/Escenas/Escena_SpriteTiles.hpp>
 #include <Juego/Escenas/EscenaMatch.hpp>
+#include <Juego/Escenas/Escena_CharacterSelect.hpp>
+#include <Juego/Escenas/Escena_Cutscene.hpp>
 #include <Motor/Camaras/CamarasGestor.hpp>
 
 namespace IVJ{
@@ -36,6 +38,8 @@ namespace IVJ{
         //CE::GestorEscenas::Get().registrarEscena("MarioCam",std::make_shared<Escena_MarioCam>(jugador));
         CE::GestorEscenas::Get().registrarEscena("SpriteTiles",std::make_shared<Escena_SpriteTiles>(jugador2));
         CE::GestorEscenas::Get().registrarEscena("Match",std::make_shared<EscenaMatch>(jugador));
+        CE::GestorEscenas::Get().registrarEscena("CharacterSelect",std::make_shared<Escena_CharacterSelect>());
+        CE::GestorEscenas::Get().registrarEscena("Cutscene",std::make_shared<Escena_Cutscene>());
 
         //crear el jugador
         jugador = std::make_shared<Entidad>();

@@ -26,6 +26,19 @@ namespace IVJ
                 texto.m_texto.setString(str);
             };
 
+            void setPosicion(float x, float y)
+            {
+                CE::Objeto::setPosicion(x, y);
+                texto.m_texto.setPosition({x, y});
+            }
+
+            void setOriginCenter()
+            {
+                auto bounds = texto.m_texto.getLocalBounds();
+                // En SFML 3, los miembros son position.x/y y size.x/y en lugar de left/top/width/height
+                texto.m_texto.setOrigin({bounds.position.x + bounds.size.x / 2.0f, bounds.position.y + bounds.size.y / 2.0f});
+            }
+
         private:
             CE::ITexto texto;
             unsigned int font_size{60u};

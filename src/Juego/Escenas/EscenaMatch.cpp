@@ -28,12 +28,68 @@
 
 namespace IVJ
 {
+    int EscenaMatch::personaje_jugador = 0;
+    int EscenaMatch::personaje_rival = 1;
+
     EscenaMatch::EscenaMatch(std::shared_ptr<Entidad>& pref) :CE::Escena{},jugador_ref{pref}{}
     
     void EscenaMatch::onInit(){
-        if(!inicializar) return;
-
         CE::GestorCamaras::Get().setCamaraActiva(1);
+
+        if(!inicializar) {
+            match_terminado = false;
+            jugador_gano = false;
+            en_pausa = false;
+            opcion_pausa = 0;
+            opcion_fin = 0;
+            mostrando_controles = false;
+            campana_sonada = false;
+            campana_timer = 0.5f;
+
+            conteo_boss.en_conteo = false;
+            conteo_boss.cuenta = 0;
+            conteo_jugador.en_conteo = false;
+            conteo_jugador.cuenta = 0;
+            conteo_jugador.barra_escape = 0.f;
+
+            jugador_ref->setPosicion(234.f, 241.f);
+            jugador_ref->getStats()->hp = jugador_ref->getStats()->hp_max;
+            if(auto m = jugador_ref->getComponente<IMomentum>()) { m->valor = 0; m->remate_disponible = false; }
+            if(auto c = jugador_ref->getComponente<ICombate>()) { c->esta_derribado = false; c->en_caida = false; c->tiene_silla = false; }
+            if(jugador_ref->tieneComponente<IMaquinaEstado>()) { jugador_ref->setFSM(std::make_shared<IdleLucha>(2, 0.7f)); }
+            if(auto control = jugador_ref->getComponente<CE::IControl>()) { 
+                control->setActivo(true); 
+                control->izq = control->der = control->arr = control->abj = control->punch = control->kick = control->guard = control->pickup = control->finisher = control->escape = control->run = false; 
+            }
+
+            if(boss_ref) {
+                boss_ref->setPosicion(450.f, 241.f);
+                boss_ref->getStats()->hp = boss_ref->getStats()->hp_max;
+                if(auto m = boss_ref->getComponente<IMomentum>()) { m->valor = 0; m->remate_disponible = false; }
+                if(auto c = boss_ref->getComponente<ICombate>()) { c->esta_derribado = false; c->en_caida = false; c->tiene_silla = false; }
+                if(boss_ref->tieneComponente<IMaquinaEstado>()) { boss_ref->setFSM(std::make_shared<IdleBoss2>(2, 0.7f)); }
+            }
+
+            // re-asignar texturas por si se cambió de personaje
+            std::string tex_jugador = (personaje_jugador == 0) ? "shawn" : "enemy";
+            if(auto s = jugador_ref->getComponente<CE::ISprite>()) { 
+                s->m_sprite.setTexture(CE::GestorAssets::Get().getTextura(tex_jugador), true);
+                s->m_sprite.setTextureRect(sf::IntRect(sf::Vector2i(0, 0), sf::Vector2i(s->width, s->height)));
+            }
+            std::string tex_boss = (personaje_rival == 0) ? "shawn" : "enemy";
+            if(auto s = boss_ref->getComponente<CE::ISprite>()) { 
+                s->m_sprite.setTexture(CE::GestorAssets::Get().getTextura(tex_boss), true);
+                s->m_sprite.setTextureRect(sf::IntRect(sf::Vector2i(0, 0), sf::Vector2i(s->width, s->height)));
+            }
+
+            if(silla_ref) {
+                auto& pool = objetos.getPool();
+                pool.erase(std::remove(pool.begin(), pool.end(), silla_ref), pool.end());
+                silla_ref = nullptr;
+            }
+            item_timer = 0.f;
+            return;
+        }
         CE::GestorAssets::Get().agregarSonido("golpe", ASSETS "/sonidos/punch.ogg");
         CE::GestorAssets::Get().agregarSonido("sillazo", ASSETS "/sonidos/sillazo.ogg");
         CE::GestorAssets::Get().agregarSonido("campana", ASSETS "/sonidos/bell.ogg");
@@ -42,6 +98,8 @@ namespace IVJ
         CE::GestorAssets::Get().agregarSonido("conteo2", ASSETS "/sonidos/two.ogg");
         CE::GestorAssets::Get().agregarSonido("conteo3", ASSETS "/sonidos/three.ogg");
         CE::GestorAssets::Get().agregarSonido("sweet", ASSETS "/sonidos/Sweet.ogg");
+        CE::GestorAssets::Get().agregarSonido("awesomechant", ASSETS "/sonidos/AwesomeChant.ogg");
+        CE::GestorAssets::Get().agregarSonido("finisher", ASSETS "/sonidos/finisher.ogg");
 
 
         //=== REGISTRAR BOTONES ===
@@ -107,7 +165,7 @@ namespace IVJ
                 "enemy",
                 ASSETS "/sprites/lucha/MrP.png",
                 CE::Vector2D{0.f,0.f},
-                CE::Vector2D{480.f,1280.f}
+                CE::Vector2D{560.f,1280.f}
             );
 
         CE::GestorAssets::Get().agregarTextura(
@@ -124,15 +182,27 @@ namespace IVJ
             CE::Vector2D{240.f,128.f}
         );
 
+        CE::GestorAssets::Get().agregarTextura(
+            "enemySillazo",
+            ASSETS "/sprites/lucha/enemySillazo.png",
+            CE::Vector2D{0.f,0.f},
+            CE::Vector2D{240.f,128.f}
+        );
+
+
         //=== JUGADOR ===
         auto trans = jugador_ref->getTransformada();
         trans->velocidad = CE::Vector2D{80.f,80.f};
         jugador_ref->setPosicion(234.f,241.f);
         
+        std::string tex_jugador = (personaje_jugador == 0) ? "shawn" : "enemy";
         auto sprite = std::make_shared<CE::ISprite>(
-                CE::GestorAssets::Get().getTextura("shawn"),
+                CE::GestorAssets::Get().getTextura(tex_jugador),
                 80,88,
                 1.f);
+        
+        float orientacion_jugador = (personaje_jugador == 1) ? -1.f : 1.f;
+        sprite->m_sprite.setScale({orientacion_jugador, 1.f});
         
         jugador_ref->addComponente(sprite);
         jugador_ref->addComponente(std::make_shared<CE::IControl>());
@@ -164,10 +234,14 @@ namespace IVJ
 
         //=== BOSS (ANTAGONISTA) ===
         boss_ref = std::make_shared<Entidad>();
+        std::string tex_boss = (personaje_rival == 0) ? "shawn" : "enemy";
         auto boss_sprite = std::make_shared<CE::ISprite>(
-                CE::GestorAssets::Get().getTextura("enemy"),
+                CE::GestorAssets::Get().getTextura(tex_boss),
                 80.f,88.f,
                 1.f);
+        
+        float orientacion_boss = (personaje_rival == 0) ? -1.f : 1.f;
+        boss_sprite->m_sprite.setScale({orientacion_boss, 1.f});
         auto boss_me = std::make_shared<IVJ::IMaquinaEstado>();
         boss_me->fsm = std::make_shared<IVJ::IdleBoss2>(2,0.7f);
         auto boss_target = std::make_shared<ITarget>(nullptr);
@@ -217,6 +291,7 @@ namespace IVJ
         objetos.agregarPool(silla_test);
         silla_ref = silla_test;
         item_timer = 0;
+        
         // === MENÚ DE PAUSA ===
         registrarBotones(sf::Keyboard::Scancode::P,"pausa");
         
@@ -226,25 +301,47 @@ namespace IVJ
         txt_pausa_titulo = std::make_shared<Texto>(CE::GestorAssets::Get().getFont("default_font"), "PAUSA");
         txt_pausa_titulo->setFontSize(60u);
         txt_pausa_titulo->setColor(sf::Color::White);
-        txt_pausa_titulo->setPosicion(460.f, 200.f);
+        txt_pausa_titulo->setOriginCenter();
+        txt_pausa_titulo->setPosicion(540.f, 200.f);
 
         txt_pausa_opc1 = std::make_shared<Texto>(CE::GestorAssets::Get().getFont("default_font"), "Reanudar");
         txt_pausa_opc1->setFontSize(40u);
-        txt_pausa_opc1->setPosicion(450.f, 350.f);
+        txt_pausa_opc1->setOriginCenter();
+        txt_pausa_opc1->setPosicion(540.f, 350.f);
 
         txt_pausa_opc2 = std::make_shared<Texto>(CE::GestorAssets::Get().getFont("default_font"), "Volver al Menu");
         txt_pausa_opc2->setFontSize(40u);
-        txt_pausa_opc2->setPosicion(450.f, 420.f);
+        txt_pausa_opc2->setOriginCenter();
+        txt_pausa_opc2->setPosicion(540.f, 420.f);
 
         txt_pausa_opc3 = std::make_shared<Texto>(CE::GestorAssets::Get().getFont("default_font"), "Ver Controles");
         txt_pausa_opc3->setFontSize(40u);
-        txt_pausa_opc3->setPosicion(450.f, 490.f);
+        txt_pausa_opc3->setOriginCenter();
+        txt_pausa_opc3->setPosicion(540.f, 490.f);
 
         txt_pausa_controles = std::make_shared<Texto>(CE::GestorAssets::Get().getFont("default_font"), 
             "CONTROLES\n\nZ: Golpe Ligero\nX: Patada Ligera\nC: Bloquear\nV: Recoger Objeto\nF: Remate (Con Momentum lleno)\nFlechas: Moverse\nDoble Tap Flechas: Correr\nP: Pausa\n\nPresiona Enter para volver");
         txt_pausa_controles->setFontSize(30u);
         txt_pausa_controles->setColor(sf::Color::White);
-        txt_pausa_controles->setPosicion(350.f, 250.f);
+        txt_pausa_controles->setOriginCenter();
+        txt_pausa_controles->setPosicion(540.f, 360.f);
+
+        // Menú Fin de Combate
+        txt_fin_titulo = std::make_shared<Texto>(CE::GestorAssets::Get().getFont("default_font"), "VICTORIA!");
+        txt_fin_titulo->setFontSize(80u);
+        txt_fin_titulo->setColor(sf::Color::Yellow);
+        txt_fin_titulo->setOriginCenter();
+        txt_fin_titulo->setPosicion(540.f, 200.f);
+
+        txt_fin_opc1 = std::make_shared<Texto>(CE::GestorAssets::Get().getFont("default_font"), "Avanzar (Menu)");
+        txt_fin_opc1->setFontSize(40u);
+        txt_fin_opc1->setOriginCenter();
+        txt_fin_opc1->setPosicion(540.f, 400.f);
+
+        txt_fin_opc2 = std::make_shared<Texto>(CE::GestorAssets::Get().getFont("default_font"), "Reiniciar Combate");
+        txt_fin_opc2->setFontSize(40u);
+        txt_fin_opc2->setOriginCenter();
+        txt_fin_opc2->setPosicion(540.f, 480.f);
 
         inicializar=false;
     }
@@ -260,15 +357,12 @@ namespace IVJ
         if(momentum_shader)
             momentum_shader->setEscalar("time", &tiempo_shader);
 
-        //campana inicio con retraso (usamos static para asegurar que sea una sola vez)
-        static bool s_campana_sonada = false;
-        static float s_campana_timer = 0.5f;
-
-        if(!s_campana_sonada) {
-            s_campana_timer -= dt;
-            if(s_campana_timer <= 0.f) {
+        //campana inicio con retraso
+        if(!campana_sonada) {
+            campana_timer -= dt;
+            if(campana_timer <= 0.f) {
                 CE::GestorAssets::Get().getSonido("campana").play();
-                s_campana_sonada = true;
+                campana_sonada = true;
             }
         }
 
@@ -280,6 +374,26 @@ namespace IVJ
         jugador_ref->inputFSM();
         jugador_ref->onUpdate(dt);
         SistemaMover2(jugador_ref,dt);
+
+        // Voltear al jugador hacia el boss
+        if(boss_ref && jugador_ref->getComponente<CE::ISprite>()) {
+            auto control = jugador_ref->getComponente<CE::IControl>();
+            bool moviendo = control && (control->izq || control->der);
+            float orientacion = (personaje_jugador == 1) ? -1.f : 1.f;
+            if (moviendo) {
+                if (control->der) {
+                    jugador_ref->getComponente<CE::ISprite>()->m_sprite.setScale({orientacion, 1.f});
+                } else if (control->izq) {
+                    jugador_ref->getComponente<CE::ISprite>()->m_sprite.setScale({-orientacion, 1.f});
+                }
+            } else {
+                float dx = boss_ref->getTransformada()->posicion.x - jugador_ref->getTransformada()->posicion.x;
+                if(dx > 0)
+                    jugador_ref->getComponente<CE::ISprite>()->m_sprite.setScale({orientacion, 1.f});
+                else if(dx < 0)
+                    jugador_ref->getComponente<CE::ISprite>()->m_sprite.setScale({-orientacion, 1.f});
+            }
+        }
 
         //doble-tap timer update
         if(tap_timer_der > 0) tap_timer_der -= dt;
@@ -293,7 +407,15 @@ namespace IVJ
             obj->inputFSM();
             obj->onUpdate(dt);
             if(!en_conteo_activo) {
-                SistemaColAABBMid(*jugador_ref, *obj, true);
+                // El jugador colisiona con el boss pero sin resolución física (para que no se atasquen).
+                // Con las paredes (que no tienen ICombate), sí hay resolución física.
+                bool es_combate = obj->tieneComponente<ICombate>();
+                SistemaColAABBMid(*jugador_ref, *obj, !es_combate);
+
+                // El Boss debe colisionar con las paredes (para no salirse del ring)
+                if (boss_ref && obj != boss_ref && !es_combate) {
+                    SistemaColAABBMid(*boss_ref, *obj, true);
+                }
             }
         }
 
@@ -353,12 +475,10 @@ namespace IVJ
                     if(jugador_ref->getComponente<CE::ISprite>()) {
                         dir_x = (jugador_ref->getComponente<CE::ISprite>()->m_sprite.getScale().x > 0) ? -1.f : 1.f;
                     }
-                    meJ->fsm = std::make_shared<RebotePinLucha>(s_x, s_y, dir_x);
-                    jugador_ref->setFSM(meJ->fsm);
+                    jugador_ref->setFSM(std::make_shared<RebotePinLucha>(s_x, s_y, dir_x));
                 }
                 if(meB && meB->fsm && meB->fsm->getNombre() == "CubiertoBoss") {
-                    meB->fsm = std::make_shared<LevantarseBoss>(6, 0.15f);
-                    boss_ref->setFSM(meB->fsm);
+                    boss_ref->setFSM(std::make_shared<LevantarseBoss>(7, 0.15f));
                 }
             }
             if(!conteo_jugador.en_conteo) {
@@ -369,12 +489,10 @@ namespace IVJ
                     if(boss_ref->getComponente<CE::ISprite>()) {
                         dir_x = (boss_ref->getComponente<CE::ISprite>()->m_sprite.getScale().x > 0) ? 1.f : -1.f;
                     }
-                    meB->fsm = std::make_shared<RebotePinBoss>(s_x, s_y, dir_x);
-                    boss_ref->setFSM(meB->fsm);
+                    boss_ref->setFSM(std::make_shared<RebotePinBoss>(s_x, s_y, dir_x));
                 }
                 if(meJ && meJ->fsm && meJ->fsm->getNombre() == "CubiertoLucha") {
-                    meJ->fsm = std::make_shared<LevantarseLucha>(7, 0.15f);
-                    jugador_ref->setFSM(meJ->fsm);
+                    jugador_ref->setFSM(std::make_shared<LevantarseLucha>(7, 0.15f));
                 }
             }
 
@@ -415,7 +533,9 @@ namespace IVJ
             item_timer += dt;
             if(item_timer >= ITEM_INTERVAL) {
                 auto silla = std::make_shared<Entidad>();
-                silla->setPosicion(132.f, 206.f);
+                float rnd_x = 120.f + static_cast<float>(rand() % 280);
+                float rnd_y = 150.f + static_cast<float>(rand() % 110);
+                silla->setPosicion(rnd_x, rnd_y);
 
                 auto sprite_silla = std::make_shared<CE::ISprite>(
                     CE::GestorAssets::Get().getTextura("silla"), 
@@ -439,7 +559,7 @@ namespace IVJ
         if(silla_ref && silla_ref->estaVivo()) {
             auto item = silla_ref->getComponente<IItem>();
             auto combateJ = jugador_ref->getComponente<ICombate>();
-            auto combateB = (boss_ref && boss_ref->estaVivo()) ? boss_ref->getComponente<ICombate>() : nullptr;
+            auto combateB = boss_ref ? boss_ref->getComponente<ICombate>() : nullptr;
             
             if(item && item->recogido) {
                 if(combateJ && combateJ->tiene_silla) {
@@ -483,7 +603,7 @@ namespace IVJ
 
         //=== PROXIMIDAD BOSS + CUBRIR ===
         mostrar_cubrir = false;
-        if (boss_ref && boss_ref->estaVivo()) {
+        if (boss_ref) {
             auto combateBoss = boss_ref->getComponente<ICombate>();
             if (combateBoss && combateBoss->esta_derribado && !conteo_boss.en_conteo && !conteo_jugador.en_conteo) {
                 auto& posJ = jugador_ref->getTransformada()->posicion;
@@ -501,15 +621,11 @@ namespace IVJ
                         conteo_boss.timer_cuenta = 0.f;
 
                         // Cambiar a estados de cubrir
-                        auto meJ = jugador_ref->getComponente<IMaquinaEstado>();
-                        if(meJ) {
-                            meJ->fsm = std::make_shared<CubriendoLucha>();
-                            jugador_ref->setFSM(meJ->fsm);
+                        if(jugador_ref->tieneComponente<IMaquinaEstado>()) {
+                            jugador_ref->setFSM(std::make_shared<CubriendoLucha>());
                         }
-                        auto meB = boss_ref->getComponente<IMaquinaEstado>();
-                        if(meB) {
-                            meB->fsm = std::make_shared<CubiertoBoss>();
-                            boss_ref->setFSM(meB->fsm);
+                        if(boss_ref->tieneComponente<IMaquinaEstado>()) {
+                            boss_ref->setFSM(std::make_shared<CubiertoBoss>());
                         }
                     }
                 }
@@ -520,6 +636,25 @@ namespace IVJ
     void EscenaMatch::onInputs(const CE::Botones& accion){
         if(accion.getTipo() == CE::Botones::TipoAccion::OnPress)
         {
+            if (match_terminado) {
+                if(accion.getNombre() == "arriba") {
+                    if(opcion_fin == 0) opcion_fin = 1;
+                    else opcion_fin--;
+                }
+                else if(accion.getNombre() == "abajo") {
+                    opcion_fin = (opcion_fin + 1) % 2;
+                }
+                else if(accion.getNombre() == "aceptar") {
+                    if(opcion_fin == 0) {
+                        CE::GestorEscenas::Get().cambiarEscena("Menu");
+                    }
+                    else if(opcion_fin == 1) {
+                        CE::GestorEscenas::Get().cambiarEscena("Match");
+                    }
+                }
+                return;
+            }
+
             if(accion.getNombre() == "pausa")
             {
                 en_pausa = !en_pausa;
@@ -693,26 +828,50 @@ namespace IVJ
 
         //mensaje de fin de match
         if(match_terminado) {
-            sf::Font& font = CE::GestorAssets::Get().getFont("nova");
-            std::string msg = jugador_gano ? "VICTORIA!" : "DERROTA...";
-            sf::Text texto(font, msg, 48);
-            texto.setPosition({vw/2.f - 120.f, vh/2.f - 40.f});
-            texto.setFillColor(jugador_gano ? sf::Color::Yellow : sf::Color::Red);
-            CE::Render::Get().AddToDraw(texto);
+            fondo_pausa->setPosicion(vw/2.f, vh/2.f);
+            fondo_pausa->onUpdate(0);
+            CE::Render::Get().AddToDraw(*fondo_pausa); // Reutilizamos el fondo oscuro de la pausa
+            
+            txt_fin_titulo->setString(jugador_gano ? "VICTORIA!" : "DERROTA...");
+            txt_fin_titulo->setColor(jugador_gano ? sf::Color::Yellow : sf::Color::Red);
+            txt_fin_titulo->setOriginCenter();
+            txt_fin_titulo->setPosicion(vw/2.f, vh/2.f - 100.f);
+            
+            sf::Color color_sel = sf::Color::Yellow;
+            sf::Color color_unsel = sf::Color(170, 175, 190);
+            
+            txt_fin_opc1->setColor(opcion_fin == 0 ? color_sel : color_unsel);
+            txt_fin_opc1->setPosicion(vw/2.f, vh/2.f + 50.f);
+
+            txt_fin_opc2->setColor(opcion_fin == 1 ? color_sel : color_unsel);
+            txt_fin_opc2->setPosicion(vw/2.f, vh/2.f + 120.f);
+
+            CE::Render::Get().AddToDraw(*txt_fin_titulo);
+            CE::Render::Get().AddToDraw(*txt_fin_opc1);
+            CE::Render::Get().AddToDraw(*txt_fin_opc2);
         }
 
         // --- MENÚ DE PAUSA ---
         if(en_pausa) {
+            fondo_pausa->setPosicion(vw/2.f, vh/2.f);
+            fondo_pausa->onUpdate(0);
             CE::Render::Get().AddToDraw(*fondo_pausa);
-            CE::Render::Get().AddToDraw(*txt_pausa_titulo);
             
             if(!mostrando_controles) {
+                txt_pausa_titulo->setPosicion(vw/2.f, vh/2.f - 160.f);
+                CE::Render::Get().AddToDraw(*txt_pausa_titulo);
+                
                 sf::Color color_sel = sf::Color::Yellow;
                 sf::Color color_unsel = sf::Color(170, 175, 190);
                 
                 txt_pausa_opc1->setColor(opcion_pausa == 0 ? color_sel : color_unsel);
+                txt_pausa_opc1->setPosicion(vw/2.f, vh/2.f - 40.f);
+                
                 txt_pausa_opc2->setColor(opcion_pausa == 1 ? color_sel : color_unsel);
+                txt_pausa_opc2->setPosicion(vw/2.f, vh/2.f + 30.f);
+                
                 txt_pausa_opc3->setColor(opcion_pausa == 2 ? color_sel : color_unsel);
+                txt_pausa_opc3->setPosicion(vw/2.f, vh/2.f + 100.f);
 
                 CE::Render::Get().AddToDraw(*txt_pausa_opc1);
                 CE::Render::Get().AddToDraw(*txt_pausa_opc2);

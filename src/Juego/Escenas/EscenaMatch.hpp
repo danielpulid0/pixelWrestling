@@ -7,6 +7,8 @@
 namespace IVJ {
     class EscenaMatch: public CE::Escena{
         public:
+            static int personaje_jugador;
+            static int personaje_rival;
             explicit EscenaMatch(std::shared_ptr<Entidad>& pref);
             virtual ~EscenaMatch(){};
             void onInit() override;
@@ -53,6 +55,9 @@ namespace IVJ {
             std::unique_ptr<CE::IShader> momentum_shader;
             float tiempo_shader{0.f};
 
+            bool campana_sonada{false};
+            float campana_timer{0.5f};
+
             //shader de parpadeo al bloquear golpe
             float flash_intensity_jug{0.f};
             float flash_intensity_boss{0.f};
@@ -67,5 +72,11 @@ namespace IVJ {
             std::shared_ptr<class Texto> txt_pausa_opc2;
             std::shared_ptr<class Texto> txt_pausa_opc3;
             std::shared_ptr<class Texto> txt_pausa_controles;
+            
+            // Menú post-match (Victoria/Derrota)
+            int opcion_fin{0};
+            std::shared_ptr<class Texto> txt_fin_titulo;
+            std::shared_ptr<class Texto> txt_fin_opc1;
+            std::shared_ptr<class Texto> txt_fin_opc2;
     };
 }

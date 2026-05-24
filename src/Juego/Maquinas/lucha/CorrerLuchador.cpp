@@ -3,6 +3,7 @@
 #include"MoverLuchador.hpp"
 #include"AtaqueSilla.hpp"
 #include"Motor/Componentes/IComponentes.hpp"
+#include <Juego/Escenas/EscenaMatch.hpp>
 
 namespace IVJ
 {
@@ -60,8 +61,10 @@ namespace IVJ
     void CorrerLuchador::onSalir(const Entidad& obj)
     {
         //restaurar la escala normal al salir de correr
-        if(obj.getComponente<CE::ISprite>())
-            obj.getComponente<CE::ISprite>()->m_sprite.setScale({1.f, 1.f});
+        if(obj.getComponente<CE::ISprite>()) {
+            float orientacion = (EscenaMatch::personaje_jugador == 1) ? -1.f : 1.f;
+            obj.getComponente<CE::ISprite>()->m_sprite.setScale({orientacion, 1.f});
+        }
     }
 
     void CorrerLuchador::onUpdate(const Entidad& obj, float dt)
@@ -79,16 +82,17 @@ namespace IVJ
             bool corriendo_izq = control->izq;
             bool corriendo_der = control->der;
             bool oponente_derecha = dx > 0;
+            float orientacion = (EscenaMatch::personaje_jugador == 1) ? -1.f : 1.f;
 
             if((corriendo_izq && oponente_derecha) || (corriendo_der && !oponente_derecha))
             {
                 // Corriendo en dirección contraria al oponente: voltear sprite
-                sprite->setScale({-1.f, 1.f});
+                sprite->setScale({-orientacion, 1.f});
             }
             else
             {
                 // Corriendo hacia el oponente: escala normal
-                sprite->setScale({1.f, 1.f});
+                sprite->setScale({orientacion, 1.f});
             }
         }
 

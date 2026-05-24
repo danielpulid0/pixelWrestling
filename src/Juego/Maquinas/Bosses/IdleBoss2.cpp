@@ -10,6 +10,8 @@
 #include "RemateBoss.hpp"
 #include "AtaqueSillaBoss.hpp"
 #include "DefensaBoss.hpp"
+#include <Juego/Escenas/EscenaMatch.hpp>
+
 namespace IVJ
 {
 
@@ -33,10 +35,11 @@ namespace IVJ
 
         //voltear sprite hacia el jugador
         if(parent.getComponente<CE::ISprite>()) {
+            float orientacion = (EscenaMatch::personaje_rival == 1) ? -1.f : 1.f;
             if(dx < 0)
-                parent.getComponente<CE::ISprite>()->m_sprite.setScale({1.f, 1.f});
+                parent.getComponente<CE::ISprite>()->m_sprite.setScale({-orientacion, 1.f});
             else
-                parent.getComponente<CE::ISprite>()->m_sprite.setScale({-1.f, 1.f});
+                parent.getComponente<CE::ISprite>()->m_sprite.setScale({orientacion, 1.f});
         }
 
         // Si el jugador está derribado, ir a cubrirlo
@@ -45,11 +48,9 @@ namespace IVJ
             auto player_combate = target_comp->target_obj->getComponente<ICombate>();
             if(player_combate && player_combate->esta_derribado) {
                 if(distancia_x < 40.f && distancia_y < 20.f) {
-                    auto meJ = target_comp->target_obj->getComponente<IMaquinaEstado>();
                     auto entJ = dynamic_cast<Entidad*>(target_comp->target_obj);
-                    if(meJ && entJ) {
-                        meJ->fsm = std::make_shared<CubiertoLucha>();
-                        entJ->setFSM(meJ->fsm);
+                    if(entJ) {
+                        entJ->setFSM(std::make_shared<CubiertoLucha>());
                     }
                     return new CubriendoBoss();
                 } else {

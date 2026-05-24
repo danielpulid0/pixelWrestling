@@ -31,6 +31,13 @@ namespace IVJ
         id_frame = 0;
         animacion_terminada = false;
 
+        // Limitar max_frames al número real de columnas de la textura para evitar cuadros vacíos
+        int texture_w = sprite->getTexture().getSize().x;
+        int frames_in_texture = texture_w / s_w;
+        if (max_frames > frames_in_texture) {
+            max_frames = frames_in_texture;
+        }
+
         // fila 8 (levantarse) - row index 7
         sprite->setTextureRect(
             sf::IntRect(

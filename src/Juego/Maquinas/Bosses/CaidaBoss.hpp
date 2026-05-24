@@ -6,7 +6,7 @@ namespace IVJ
     class CaidaBoss : public FSMBoss
     {
     public:
-        explicit CaidaBoss(int max_frames = 5, float frame_rate = 0.15f);
+        explicit CaidaBoss(int max_frames = 4, float frame_rate = 0.15f);
         ~CaidaBoss() override = default;
 
         FSM* onInputs(Entidad& parent, CE::Vector2D& target) override;

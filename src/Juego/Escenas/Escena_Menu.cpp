@@ -11,6 +11,8 @@
 #include <Juego/Sistemas/Sistemas.hpp>
 #include <Juego/objetos/Entidad.hpp>
 #include <Motor/Componentes/IComponentes.hpp>
+#include <Motor/Camaras/CamarasGestor.hpp>
+#include <Juego/Escenas/EscenaMatch.hpp>
 
 namespace IVJ
 {
@@ -21,6 +23,7 @@ namespace IVJ
 
     void Escena_Menu::onInit()
     {
+        CE::GestorCamaras::Get().setCamaraActiva(0);
         if(!inicializar)
             return;
 
@@ -113,6 +116,17 @@ namespace IVJ
         registrarBotones(sf::Keyboard::Scancode::S, "abajo");
         registrarBotones(sf::Keyboard::Scancode::Down, "abajo");
         registrarBotones(sf::Keyboard::Scancode::Enter, "aceptar");
+        registrarBotones(sf::Keyboard::Scancode::Escape, "escape");
+
+        txt_controles = std::make_shared<Texto>(CE::GestorAssets::Get().getFont("default_font"), 
+            "CONTROLES\n\nZ: Golpe básico\nX: Patada\nC: Bloquear\nV: Recoger Objeto\nF: Remate (Con Momentum lleno)\nFlechas: Moverse\nDoble Tap Flechas: Correr\nP: Pausa\n\nPresiona Enter para volver");
+        txt_controles->setFontSize(30u);
+        txt_controles->setColor(sf::Color::White);
+        txt_controles->setOriginCenter();
+        txt_controles->setPosicion(540.f, 360.f);
+
+        fondo_controles = std::make_shared<Rectangulo>(1080.f, 720.f, sf::Color(0, 0, 0, 180), sf::Color::Transparent);
+        fondo_controles->setPosicion(540.f, 360.f);
 
         inicializar = false;
     }
@@ -138,6 +152,13 @@ namespace IVJ
         {
             case CE::Botones::TipoAccion::OnPress:
             {   
+                if(mostrando_controles) {
+                    if(accion.getNombre() == "aceptar" || accion.getNombre() == "escape") {
+                        mostrando_controles = false;
+                    }
+                    return;
+                }
+
                 if(accion.getNombre() == "arriba" || accion.getNombre() == "abajo") 
                 {
                     if(accion.getNombre() == "arriba")
@@ -164,13 +185,15 @@ namespace IVJ
                     switch(opcion)
                     {
                         case 0:
-                            CE::GestorEscenas::Get().cambiarEscena("SpriteTiles");
+                            CE::GestorEscenas::Get().cambiarEscena("CharacterSelect");
                             break;
                         case 1:
-                            CE::GestorEscenas::Get().cambiarEscena("Match");
+                            IVJ::EscenaMatch::personaje_jugador = 0;
+                            IVJ::EscenaMatch::personaje_rival = 1;
+                            CE::GestorEscenas::Get().cambiarEscena("Cutscene");
                             break;
                         case 2:
-                            // TODO: implementar escena de controles
+                            mostrando_controles = true;
                             break;
                         case 3:
                             std::exit(0);
@@ -188,5 +211,11 @@ namespace IVJ
     {
         for(auto& obj: objetos.getPool())
             CE::Render::Get().AddToDraw(*obj);
+            
+        if(mostrando_controles) {
+            fondo_controles->onUpdate(0);
+            CE::Render::Get().AddToDraw(*fondo_controles);
+            CE::Render::Get().AddToDraw(*txt_controles);
+        }
     }
 }

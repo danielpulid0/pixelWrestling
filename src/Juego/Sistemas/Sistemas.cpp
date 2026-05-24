@@ -592,10 +592,13 @@ namespace IVJ
         int danio_int = (int)danio_final;
         if(danio_int < 1) danio_int = 1;
         auto stats = defensor.getStats();
-        if(stats->hp > danio_int)
+        if(stats->hp > danio_int) {
             stats->hp -= danio_int;
-        else
+        } else {
             stats->hp = 0;
+            combateD->en_caida = true;
+            combateD->causa_caida = 1; // derribo normal por llegar a 0 hp
+        }
 
         //contar golpes consecutivos para caída (solo ataques básicos)
         if(combateA->tipo_ataque == 1 || combateA->tipo_ataque == 2) {
@@ -713,9 +716,9 @@ namespace IVJ
                 CE::GestorAssets::Get().getSonido("conteo2").play();
             } else if (conteo.cuenta == 3) {
                 CE::GestorAssets::Get().getSonido("conteo3").play();
-            }
-            if(conteo.cuenta >= 3) {
+            } else if (conteo.cuenta >= 4) {
                 CE::GestorAssets::Get().getSonido("campana").play();
+                conteo.en_conteo = false;
                 return true; //victoria
             }
         }

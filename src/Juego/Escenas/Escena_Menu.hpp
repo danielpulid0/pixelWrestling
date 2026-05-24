@@ -27,5 +27,9 @@ namespace IVJ
             std::shared_ptr<Texto> opcion2;
             std::shared_ptr<Texto> opcion3;
             std::shared_ptr<Texto> opcion4;
+            
+            bool mostrando_controles{false};
+            std::shared_ptr<class Texto> txt_controles;
+            std::shared_ptr<class Rectangulo> fondo_controles;
     };
 }

@@ -18,10 +18,14 @@ namespace IVJ
 
     FSM* CaidaBoss::onInputs(Entidad& parent, CE::Vector2D& target)
     {
-        (void)parent;
         (void)target;
-        if(animacion_terminada && timer_suelo >= TIEMPO_SUELO)
-            return new LevantarseBoss(6, 0.15f);
+        if(animacion_terminada && timer_suelo >= TIEMPO_SUELO) {
+            auto stats = parent.getStats();
+            if(stats && stats->hp <= 0) {
+                return nullptr; // Stay down for the pin
+            }
+            return new LevantarseBoss(7, 0.15f);
+        }
         return nullptr;
     }
 
@@ -52,6 +56,9 @@ namespace IVJ
         // reproducir sonido según la causa
         if(combate && combate->causa_caida == 3) {
             CE::GestorAssets::Get().getSonido("sillazo").play();
+            CE::GestorAssets::Get().getSonido("awesomechant").play();
+        } else if(combate && combate->causa_caida == 4) {
+            CE::GestorAssets::Get().getSonido("finisher").play();
         } else {
             CE::GestorAssets::Get().getSonido("golpe").play();
         }

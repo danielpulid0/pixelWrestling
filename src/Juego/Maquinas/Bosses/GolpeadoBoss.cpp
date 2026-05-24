@@ -35,7 +35,7 @@ namespace IVJ
         // fila 6 (hurt)
         sprite->setTextureRect(
             sf::IntRect(
-                sf::Vector2i(0, 11 * s_h),
+                sf::Vector2i(0, 5 * s_h),
                 sf::Vector2i(s_w, s_h)
             )
         );
@@ -61,7 +61,7 @@ namespace IVJ
             }
             sprite->setTextureRect(
                 sf::IntRect(
-                    sf::Vector2i(s_w * (id_frame % max_frames), 11 * s_h),
+                    sf::Vector2i(s_w * (id_frame % max_frames), 5 * s_h),
                     sf::Vector2i(s_w, s_h)
                 )
             );
