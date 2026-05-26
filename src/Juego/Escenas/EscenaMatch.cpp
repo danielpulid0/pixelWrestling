@@ -132,7 +132,7 @@ namespace IVJ
         // Función auxiliar para crear paredes invisibles
         auto crearPared = [&](float ancho, float alto, float x, float y) {
             auto pared = std::make_shared<Entidad>();
-            // Solo ocupamos el BoundingBox[cite: 1], no necesitamos Sprite
+            // Solo ocupamos el BoundingBox, no necesitamos Sprite
             pared->addComponente(std::make_shared<CE::IBoundingBox>(CE::Vector2D{ancho, alto}));
             pared->setPosicion(x, y);
             // Paredes deben estar "vivas" para que no las borre el pool
@@ -147,7 +147,7 @@ namespace IVJ
         crearPared(20.f, 140.f, 90.f, 206.f); // Límite Izquierdo
         crearPared(20.f, 140.f, 590.f, 206.f); // Límite Derecho
 
-        // === CARGAR OBJETOS INDIVIDUALES DESDE EL ATLAS ===[cite: 1]
+        // === CARGAR OBJETOS INDIVIDUALES DESDE EL ATLAS ===
         CE::GestorAssets::Get().agregarTextura("atlas_objetos",
                 ASSETS "/atlas/RingWWF.png",
                 CE::Vector2D{0.f,0.f},

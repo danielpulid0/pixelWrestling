@@ -27,7 +27,6 @@ namespace IVJ
         if(!inicializar)
             return;
 
-        // Volvemos a tu método original para el color de fondo base
         setColorFondo(sf::Color(10, 10, 15));
 
         CE::GestorAssets::Get().agregarMusica("menu_music", ASSETS "/musica/cancionFondo.ogg");
@@ -119,7 +118,7 @@ namespace IVJ
         registrarBotones(sf::Keyboard::Scancode::Escape, "escape");
 
         txt_controles = std::make_shared<Texto>(CE::GestorAssets::Get().getFont("default_font"), 
-            "CONTROLES\n\nZ: Golpe básico\nX: Patada\nC: Bloquear\nV: Recoger Objeto\nF: Remate (Con Momentum lleno)\nFlechas: Moverse\nDoble Tap Flechas: Correr\nP: Pausa\n\nPresiona Enter para volver");
+            "CONTROLES\n\nZ: Golpe basico\nX: Patada\nC: Bloquear\nV: Recoger Objeto\nF: Remate (Con Momentum lleno)\nFlechas: Moverse\nDoble Tap Flechas: Correr\nP: Pausa\n\nPresiona Enter para volver");
         txt_controles->setFontSize(30u);
         txt_controles->setColor(sf::Color::White);
         txt_controles->setOriginCenter();

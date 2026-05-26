@@ -621,7 +621,7 @@ namespace IVJ
         auto momentum = atacante.getComponente<IMomentum>();
         if(momentum) {
             if(danio_base!=25){
-                momentum->valor += danio_final * 2.5f;
+                momentum->valor += danio_final * 5.0f;
                 if(momentum->valor > IMomentum::MAX_MOMENTUM)
                     momentum->valor = IMomentum::MAX_MOMENTUM;
             }

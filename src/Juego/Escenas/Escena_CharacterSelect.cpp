@@ -106,9 +106,6 @@ namespace IVJ
         // 6. Crear el cursor de selección (Recuadro amarillo/rojo)
         // El cursor es un rectángulo sin relleno y con borde grueso
         cursor_rect = std::make_shared<Rectangulo>(130.f, 130.f, sf::Color::Transparent, sf::Color::Yellow);
-        // CimaEngine3v Rectangulo class in Figuras.hpp might not have setOutlineThickness, 
-        // wait, let's just make it a rectangle with a transparent fill color and yellow outline.
-        // Usually the Rectangulo constructor takes (w, h, fillColor, outlineColor).
         objetos.agregarPool(cursor_rect);
 
         // 7. Registrar botones
