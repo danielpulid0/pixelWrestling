@@ -44,3 +44,6 @@ CimaEngine3v/bin/Debug/CimaEngine3v.exe
 CimaEngine3v/bin/Release/CimaEngine3v.exe
 
 ```
+
+#implementación del video
+ comando para crear las capturas: ffmpeg -i historia.mp4 -vf scale=1080:720,fps=15 frame_%03d.png 
